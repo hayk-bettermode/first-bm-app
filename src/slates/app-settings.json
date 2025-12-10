@@ -1,0 +1,132 @@
+{
+    "rootBlock": "root",
+    "blocks": [
+      {
+        "id": "root",
+        "name": "Container",
+        "props": "{}",
+        "children": "[\"badges\",\"card-badge-config-awesome\"]"
+      },
+      {
+        "id": "badges",
+        "name": "Card",
+        "props": "{}",
+        "children": "[\"badges-header\",\"badges-content\"]"
+      },
+      {
+        "id": "badges-header",
+        "name": "Card.Header",
+        "props": "{\"title\":\"Select a badge to configure\",\"withBorder\":true}",
+        "children": "[]"
+      },
+      {
+        "id": "badges-content",
+        "name": "Card.Content",
+        "props": "{\"className\":\"flex flex-wrap gap-3\"}",
+        "children": "[\"badge-JFnE4soDBP\",\"badge-wD1mmhgIpx\",\"badge-TQNjAhHJZJ\"]"
+      },
+      {
+        "id": "badge-JFnE4soDBP",
+        "name": "Button",
+        "props": "{\"callbackId\":\"select-badge-JFnE4soDBP\",\"variant\":\"primary\",\"rounded\":true,\"text\":\"Awesome\",\"className\":\"bg-[#C9F3DA] text-[#006D41] border-0\"}",
+        "children": "[]"
+      },
+      {
+        "id": "badge-wD1mmhgIpx",
+        "name": "Button",
+        "props": "{\"callbackId\":\"select-badge-wD1mmhgIpx\",\"variant\":\"primary\",\"rounded\":true,\"text\":\"Stranger\",\"className\":\"bg-[#FFE1D7] text-[#AF294E] border-0\"}",
+        "children": "[]"
+      },
+      {
+        "id": "badge-TQNjAhHJZJ",
+        "name": "Button",
+        "props": "{\"callbackId\":\"select-badge-TQNjAhHJZJ\",\"variant\":\"primary\",\"rounded\":true,\"text\":\"Perfect\",\"className\":\"bg-[#DED9FF] text-[#4A1FB8] border-0\"}",
+        "children": "[]"
+      },
+      {
+        "id": "card-badge-config-awesome",
+        "name": "Card",
+        "props": "{}",
+        "children": "[\"card-header-awesome\",\"content-awesome\"]"
+      },
+      {
+        "id": "card-header-awesome",
+        "name": "Card.Header",
+        "props": "{\"title\":\"Awesome\",\"withBorder\":true}",
+        "children": "[]"
+      },
+      {
+        "id": "content-awesome",
+        "name": "Card.Content",
+        "props": "{\"className\":\"space-y-3\"}",
+        "children": "[\"card-badge-config-awesome-conditions\"]"
+      },
+      {
+        "id": "card-badge-config-awesome-conditions",
+        "name": "Card",
+        "props": "{}",
+        "children": "[\"card-header-awesome-conditions\",\"content-awesome-conditions\"]"
+      },
+      {
+        "id": "card-header-awesome-conditions",
+        "name": "Card.Header",
+        "props": "{\"title\":\"Conditions\",\"withBorder\":true}",
+        "children": "[]"
+      },
+      {
+        "id": "content-awesome-conditions",
+        "name": "Card.Content",
+        "props": "{\"#text\":\"IFIN\",\"className\":\"space-y-3\"}",
+        "children": "[\"awesome-conditions-if-object\",\"awesome-conditions-if-operator\",\"awesome-conditions-if-value\",\"awesome-conditions-in-window\",\"awesome-conditions-in-operator\",\"awesome-conditions-in-value\",\"save\"]"
+      },
+      {
+        "id": "awesome-conditions-if-object",
+        "name": "Input",
+        "props": "{\"name\":\"if-object\",\"value\":\"# of posts\"}",
+        "children": "[]"
+      },
+      {
+        "id": "awesome-conditions-if-operator",
+        "name": "Input",
+        "props": "{\"name\":\"if-operator\",\"value\":\">=\"}",
+        "children": "[]"
+      },
+      {
+        "id": "awesome-conditions-if-value",
+        "name": "Input",
+        "props": "{\"name\":\"if-value\",\"value\":10}",
+        "children": "[]"
+      },
+      {
+        "id": "awesome-conditions-in-window",
+        "name": "Input",
+        "props": "{\"name\":\"in-window\",\"value\":\"Last N days\"}",
+        "children": "[]"
+      },
+      {
+        "id": "awesome-conditions-in-operator",
+        "name": "Input",
+        "props": "{\"name\":\"in-operator\",\"value\":\"=\"}",
+        "children": "[]"
+      },
+      {
+        "id": "awesome-conditions-in-value",
+        "name": "Input",
+        "props": "{\"name\":\"in-value\",\"value\":30}",
+        "children": "[]"
+      },
+      {
+        "id": "save",
+        "name": "Button",
+        "props": "{\"callbackId\":\"save\",\"variant\":\"primary\"}",
+        "children": "[\"save-button-text\"]"
+      },
+      {
+        "id": "save-button-text",
+        "name": "Text",
+        "props": "{\"value\":\"Save\"}",
+        "children": "[]"
+      }
+    ]
+  }
+  

@@ -1,0 +1,5 @@
+export enum InteractionCallbackIdEnum {
+  SELECT_BADGE = "SELECT_BADGE",
+  SAVE_BADGE_CONFIG = "SAVE_BADGE_CONFIG",
+  SAVE_APP_SETTINGS = "SAVE_APP_SETTINGS",
+}
