@@ -15,7 +15,7 @@ export class TimeWindowJobService {
 
   start(networkId: string, callback: () => void) {
     // Nightly time window shifting job - runs at 00:00 UTC
-    const task = cron.createTask("* * * * *", callback);
+    const task = cron.createTask("0 0 * * *", callback);
 
     this.cronTasks.set(networkId, task.id);
     task.start(); // Start the task immediately

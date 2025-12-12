@@ -27,11 +27,15 @@ export class AppStateService {
 
     const appState: AppState = {
       config: {},
-      availableBadges: {},
+      
       posts: new Map(),
+      
+      availableBadges: {},
+      selectedBadge: null,
+      removedBadges: [],
+
       members: {},
       suspendedMembers: [],
-      selectedBadge: null,
     };
     this.appStates.set(networkId, appState);
     return appState;
@@ -56,7 +60,7 @@ export class AppStateService {
   getBadgeConfig(networkId: string, badgeId: BadgeId): BadgeConfig | undefined {
     return this.getAppConfig(networkId)?.[badgeId];
   }
-  setBadgeConfigActive(networkId: string, badgeId: BadgeId, active: boolean) {
+  setBadgeConfigStatus(networkId: string, badgeId: BadgeId, active: boolean) {
     const appState = this.getAppState(networkId);
     appState.config[badgeId].active = active;
   }
@@ -88,9 +92,32 @@ export class AppStateService {
     delete appState.availableBadges[badgeId];
   }
 
+  // Removed badges
+  isRemovedBadge(networkId: string, badgeId: BadgeId): boolean {
+    return this.getAppState(networkId).removedBadges.includes(badgeId);
+  }
+  addRemovedBadge(networkId: string, badgeId: BadgeId) {
+    const appState = this.getAppState(networkId);
+    if (appState.removedBadges.includes(badgeId)) {
+      return;
+    }
+    appState.removedBadges.push(badgeId);
+  }
+  deleteRemovedBadge(networkId: string, badgeId: BadgeId) {
+    const appState = this.getAppState(networkId);
+    if (!appState.removedBadges.includes(badgeId)) {
+      return;
+    }
+    appState.removedBadges = appState.removedBadges.filter(id => id !== badgeId);
+  }
+
   // Posts
   getPosts(networkId: string): Posts {
     return this.getAppState(networkId).posts;
+  }
+  setPosts(networkId: string, posts: PostDetails[]) {
+    const appState = this.getAppState(networkId);
+    appState.posts = new Map(posts.map(post => [post.id, post]));
   }
   getPost(networkId: string, postId: PostId): PostDetails | undefined {
     return this.getPosts(networkId).get(postId);
@@ -111,6 +138,10 @@ export class AppStateService {
   getMembers(networkId: string): Members {
     return this.getAppState(networkId).members;
   }
+  setMembers(networkId: string, members: Members) {
+    const appState = this.getAppState(networkId);
+    appState.members = members;
+  }
   getMember(networkId: string, memberId: MemberId): MemberDetails | undefined {
     return this.getMembers(networkId)?.[memberId];
   }
@@ -126,18 +157,18 @@ export class AppStateService {
     };
   }
 
-  // Member buckets
-  setMemberBucketValue(networkId: string, memberId: MemberId, badgeId: BadgeId, conditionId: BadgeConditionId, value: number) {
-    const appState = this.getAppState(networkId);
-    if (!appState.members[memberId]) {
-      this.addMember(networkId, memberId);
-    }
-    _set(appState.members[memberId].buckets, [badgeId, conditionId], value);
-  }
-  getMemberBucketValue(networkId: string, memberId: MemberId, badgeId: BadgeId, conditionId: BadgeConditionId): number | undefined {
-    return this.getAppState(networkId).members?.[memberId]?.buckets?.[badgeId]?.[conditionId];
-  }
-
+  // Member buckets (not used)
+  // setMemberBucketValue(networkId: string, memberId: MemberId, badgeId: BadgeId, conditionId: BadgeConditionId, value: number) {
+  //   const appState = this.getAppState(networkId);
+  //   if (!appState.members[memberId]) {
+  //     this.addMember(networkId, memberId);
+  //   }
+  //   _set(appState.members[memberId].buckets, [badgeId, conditionId], value);
+  // }
+  // getMemberBucketValue(networkId: string, memberId: MemberId, badgeId: BadgeId, conditionId: BadgeConditionId): number | undefined {
+  //   return this.getAppState(networkId).members?.[memberId]?.buckets?.[badgeId]?.[conditionId];
+  // }
+  
   // Member badges
   getMemberBadges(networkId: string, memberId: MemberId): BadgeId[] {
     return this.getAppState(networkId).members?.[memberId]?.badges ?? [];
@@ -163,7 +194,7 @@ export class AppStateService {
     appState.members[memberId].badges = appState.members[memberId].badges.filter(id => id !== badgeId);
   }
 
-  // Member status lists
+  // Member suspension
   isMemberSuspended(networkId: string, memberId: MemberId): boolean {
     return this.getAppState(networkId).suspendedMembers.includes(memberId);
   }

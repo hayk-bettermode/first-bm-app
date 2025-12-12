@@ -8,6 +8,8 @@ import {
   dynamicBlockRouter,
 } from "./routers";
 import { Logger } from "@tribeplatform/node-logger";
+import { BettermodeClient } from "@clients";
+import { BadgeOrchestrationService } from "./services/badge-orchestration.service";
 
 // Increase max listeners to prevent warnings from Logger instances
 // Each Logger instance may add process listeners
@@ -22,6 +24,13 @@ const { LOGGING_APP_NAME, LOGGING_APP_KEY, NODE_APP_PORT } = process.env;
 const logger = new Logger({
   applicationName: LOGGING_APP_KEY!,
   context: "index",
+});
+
+BettermodeClient.getNetworkAppInstallations().then((networkIds) => {
+  const orchestrationService = BadgeOrchestrationService.getInstance();
+  networkIds.forEach((networkId) => {
+    orchestrationService.handleAppInstalled(networkId);
+  });
 });
 
 const app = express();

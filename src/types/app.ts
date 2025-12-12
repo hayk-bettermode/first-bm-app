@@ -52,11 +52,15 @@ export interface Bucket {
     [conditionId: BadgeConditionId]: number;
 }
 export interface Buckets {
-    [badgeId: BadgeId]: Bucket;
+    [badgeId: BadgeId]: {
+        conditions: Bucket;
+        metConditions: BadgeConditionId[];
+    }
 }
 export interface MemberDetails {
     id: MemberId;
     buckets: Buckets;
+    previousBadges?: BadgeId[];
     badges: BadgeId[];
 }
 export interface Members {
@@ -67,9 +71,18 @@ export interface Members {
 // Properties that we want to keep in local state
 export interface AppState {
     config: AppConfig;
+
     posts: Posts;
+
     availableBadges: AvailableBadges;
-    members: Members;
-    suspendedMembers: MemberId[];
     selectedBadge: BadgeId | null;
+    removedBadges: BadgeId[];
+
+    members: Members;
+    suspendedMembers: MemberId[];    
+}
+
+export interface BadgeCalculationFilters {
+    memberIds?: MemberId[];
+    badgeIds?: BadgeId[];
 }

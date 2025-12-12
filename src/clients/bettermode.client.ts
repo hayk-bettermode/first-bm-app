@@ -1,14 +1,14 @@
-import { GlobalClient } from "@tribeplatform/gql-client";
 import { Logger } from "@tribeplatform/node-logger";
+import { graphql, gqlClient } from "@/gql";
 import { MemberFieldInput } from "@/types";
 import { AppNetworkSettings, BadgeId, MemberId, PostDetails } from "@/types/app";
 
 import { INITIAL_APP_NETWORK_SETTINGS } from "@/constants/app-settings.constants";
 import { BADGE_CONDITION_LIMITS } from "@/constants/condition.constants";
-import { AppAction, Badge, BadgeType, MassActionRequestAction, MassActionRequestContext, MemberListFilterByOperator, MutationCreateMassActionRequestArgs, MutationName, PaginatedPost, Post, PostListFilterByEnum, PostListFilterByOperator, PostListOrderByEnum } from "@tribeplatform/gql-client/types";
+import { AppAction, Badge, BadgeType, ActionStatus, MassActionRequestAction, MassActionRequestContext, MassActionRequestStatus, MemberListFilterByOperator, MutationCreateMassActionRequestArgs, MutationName, PaginatedPost, Post, PostListFilterByEnum, PostListFilterByOperator, PostListOrderByEnum, PaginatedAppInstallation } from "@tribeplatform/gql-client/types";
+import { ResultOf, VariablesOf } from "gql.tada";
 
 export class BettermodeClient {
-  private global: GlobalClient;
   private logger: Logger;
   private networkId: string;
   private appId: string;
@@ -28,145 +28,151 @@ export class BettermodeClient {
         error: "Network ID and app ID are required"
       });
     }
+  }
 
-    this.global = new GlobalClient({
-      clientId: process.env.CLIENT_ID!,
-      clientSecret: process.env.CLIENT_SECRET!,
-      graphqlUrl: process.env.GRAPHQL_URL!,
-      onError: (errors, client, error) => {
-        // Log GraphQL errors using logger instead of console
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        const errorDetails = errors?.map((e: unknown) => {
-          if (e instanceof Error) return e.message;
-          if (typeof e === "object" && e !== null && "message" in e) {
-            return String((e as { message: unknown }).message);
+  static async getNetworkAppInstallations(): Promise<string[]> {
+    const appId = process.env.APP_ID!;
+    
+    try {
+      const networkAppInstallationsQuery = graphql(`
+        query {
+          networkAppInstallations (
+            offset: 0,
+            limit: 10,
+            status: ENABLED
+          ) {
+            nodes {
+              id
+              app {
+                id
+              }
+              network {
+                id
+              }
+            }
+            totalCount
           }
-          return String(e);
-        });
-        this.logger.error("[Bettermode GQL Error]", {
-          error: errorMessage,
-          errors: errorDetails,
-        });
-      },
-    });
+        }
+      `);
+
+      interface AppNetworkSettingsQueryResult {
+        networkAppInstallations: PaginatedAppInstallation;
+      }
+      
+      const { networkAppInstallations: response }: AppNetworkSettingsQueryResult =
+        await gqlClient.request<AppNetworkSettingsQueryResult, VariablesOf<typeof networkAppInstallationsQuery>>(networkAppInstallationsQuery);
+      
+      const appIds = response?.nodes?.map((node: any) => node.app.id) ?? [];
+      const networkIds = response?.nodes?.map((node: any) => node.network.id) ?? [];
+
+      return networkIds;
+    } catch (error: unknown) {
+      const errorMessage = (error as Error)?.message || String(error);
+      console.error("Error fetching app settings", errorMessage);
+      return [];
+    }
   }
 
   async getAppNetworkSettings(): Promise<AppNetworkSettings> {
-    const networkId = this.networkId!;
     const appId = this.appId!;
+    
     try {
-      const client = await this.global.getTribeClient({ networkId });
-      const raw = await client.app.networkSettings({ appId }); // returns string
-      console.log("getAppNetworkSettings", raw);
+      const appSettingsQuery = graphql(`
+        query ($appId: ID!) {
+          getAppNetworkSettings (appId: $appId)
+        }
+      `);
+
+      interface AppNetworkSettingsQueryResult {
+        getAppNetworkSettings: string;
+      }
+      
+      const { getAppNetworkSettings: raw }: AppNetworkSettingsQueryResult = await gqlClient.request<AppNetworkSettingsQueryResult, VariablesOf<typeof appSettingsQuery>>(appSettingsQuery, { appId });
       return raw ? JSON.parse(raw) : {};
     } catch (error: unknown) {
       const errorMessage = (error as Error)?.message || String(error);
-      if (
-        errorMessage.includes("App not found") ||
-        errorMessage.includes('code":"110"')
-      ) {
-        this.logger.error(
-          "App authentication failed - please verify CLIENT_ID and CLIENT_SECRET are correct and the app is registered",
-          { networkId, appId },
-        );
-      }
-      this.logger.error("Error fetching app network settings", errorMessage);
-      throw error;
+      this.logger.error("Error fetching app settings", errorMessage);
+      return {};
     }
   }
 
   async updateAppNetworkSettings(settings: AppNetworkSettings): Promise<AppAction> {
-    const networkId = this.networkId!;
     const appId = this.appId!;
-    try {
-      const client = await this.global.getTribeClient({ networkId });
-      console.log("updateAppNetworkSettings", JSON.stringify(settings));
-      const res = await client.app.updateNetworkSettings({
-        appId,
-        settings: JSON.stringify(settings),
-      });
 
-      return res;
+    try {
+      const updateAppSettingsQuery = graphql(`
+        mutation ($appId: ID!, $settings: String!) {
+          updateAppNetworkSettings (appId: $appId, settings: $settings) {
+            data
+            status
+          }
+        }
+      `);
+
+      interface UpdateAppNetworkSettingsMutationResult {
+        updateAppNetworkSettings: {
+          data: string;
+          status: ActionStatus;
+        }
+      }
+
+      const response: UpdateAppNetworkSettingsMutationResult =
+        await gqlClient.request<UpdateAppNetworkSettingsMutationResult, VariablesOf<typeof updateAppSettingsQuery>>(
+          updateAppSettingsQuery, {
+            appId,
+            settings: JSON.stringify(settings)
+          }
+        );
+
+      return response.updateAppNetworkSettings;
     } catch (error: unknown) {
-      this.logger.error(
-        "Error updating app network settings",
-        (error as Error)?.message || error,
-      );
+      const errorMessage = (error as Error)?.message || String(error);
+      this.logger.error("Error updating app settings", errorMessage);
       throw error;
     }
   }
-
-  
-
-  /*
-  async updateMember(
-    memberId: string,
-    networkId: string,
-    fields: MemberFieldInput[],
-  ) {
-    try {
-      const client = await this.global.getTribeClient({ networkId });
-      const result = await client.members.update(
-        {
-          id: memberId,
-          input: {
-            fields: fields.map((f) => {
-              let value = f.value;
-
-              // For date fields, format as YYYY-MM-DD (date-only format)
-              if (f.type === "date" || f.key.includes("date")) {
-                if (value instanceof Date) {
-                  // Format as YYYY-MM-DD
-                  value = value.toISOString().split("T")[0];
-                } else if (typeof value === "string") {
-                  // If it's an ISO datetime string, extract just the date part
-                  const date = new Date(value);
-                  if (!isNaN(date.getTime())) {
-                    value = date.toISOString().split("T")[0];
-                  }
-                }
-              }
-
-              // Convert value to JSON string as required by the API
-              // All values must be JSON-serialized strings
-              return {
-                key: f.key,
-                value: JSON.stringify(value),
-              };
-            }),
-          },
-        },
-        "basic",
-      );
-      return result;
-    } catch (error: unknown) {
-      this.logger.error(
-        "Error updating member",
-        (error as Error)?.message || error,
-      );
-      throw error;
-    }
-  }
-  */
 
   async getAllManualBadges(): Promise<Badge[]> {
     const networkId = this.networkId!;
     try {
-      const client = await this.global.getTribeClient({ networkId });
-      if (!client) {
-        this.logger.error("Failed to get network client", { networkId });
-        throw new Error("Failed to get network client");
+      const badgesQuery = graphql(`
+        query getAvailableBadges {
+          network {
+            badges {
+              active
+              backgroundColor
+              daysUntilExpired
+              id
+              imageId
+              longDescription
+              name
+              networkId
+              settings {
+                key, value
+              }
+              shortDescription
+              text
+              textColor
+              type
+            }
+          }
+        }
+      `);
+
+      interface GetAvailableBadgesQueryResult {
+        network: {
+          badges: Badge[];
+        };
       }
+      
+      const { network: { badges } }: GetAvailableBadgesQueryResult = await gqlClient.request<GetAvailableBadgesQueryResult, VariablesOf<typeof badgesQuery>>(badgesQuery);
 
-      const result = await client.network.get({ badges: "all" });
-
-      if (!result?.badges) {
+      if (!badges) {
         this.logger.error("No badges found", { networkId });
         return [];
       }
 
-      return result.badges.filter((badge: Badge) => badge.type === BadgeType.Manual);
+      return badges.filter((badge: Badge) => badge.type === BadgeType.Manual);
     } catch (error: unknown) {
       const errorMessage = (error as Error)?.message || String(error);
       this.logger.error("Error fetching badges", errorMessage);
@@ -174,7 +180,6 @@ export class BettermodeClient {
     }
   }
 
-  /*
   async getAllPostsMatadata(
     pageSize?: number,
     delayMs?: number,
@@ -183,7 +188,6 @@ export class BettermodeClient {
   ): Promise<PostDetails[]> {
     const networkId = this.networkId!;
     try {
-      const client = await this.global.getTribeClient({ networkId });
       const posts: PostDetails[] = [];
       let hasNextPage = true;
       let endCursor: string | null = null;
@@ -199,13 +203,42 @@ export class BettermodeClient {
       const fetchPageSize = pageSize || 10;
       const fetchDelay = delayMs || 2000; // Default 2 seconds to stay under burst limits
 
-      this.logger.info("Starting post fetch", {
-        networkId,
-        maxPosts: maxPosts || "unlimited",
-        maxPostElapsedDays: fetchMaxPostElapsedDays,
-        pageSize: fetchPageSize,
-        delayMs: fetchDelay,
-      });
+      const postsQuery = graphql(`
+        query (
+          $limit: Int!,
+          $after: String,
+          $dateFilterValue: String!
+        ) {
+          posts(
+            limit: $limit,
+            after: $after,
+            orderBy: publishedAt,
+            filterBy: [{
+              key: publishedAt,
+              operator: gte,
+              value: $dateFilterValue
+            }]
+          ) {
+            nodes {
+              id
+              title
+              publishedAt
+              createdById
+              isHidden
+              isAnonymous
+              status
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `);
+
+      interface PostsQueryResult {
+        posts: PaginatedPost;
+      }
 
       while (hasNextPage) {
         // Stop if we've reached the max posts limit
@@ -233,64 +266,22 @@ export class BettermodeClient {
           ? Math.min(fetchPageSize, maxPosts - posts.length)
           : fetchPageSize;
 
-        // const result = await client.posts.list(
-        //   {
-        //     limit: currentLimit,
-        //     after: endCursor || undefined,
-        //     orderBy: PostListOrderByEnum.publishedAt,
-        //     filterBy: [{
-        //       key: PostListFilterByEnum.publishedAt,
-        //       operator: PostListFilterByOperator.gte,
-        //       value: `"${dateFilterValue}"`,
-        //     }],
-        //   },
-        //   'basic'
-        // );
-        const query = `
-        query {
-          posts(
-            limit: ${currentLimit},
-            after: ${endCursor || undefined},
-            orderBy: publishedAt,
-            filterBy: [{
-              key: publishedAt,
-              operator: gte,
-              value: "\"${dateFilterValue}\""
-            }]
-          ) {
-            nodes {
-              id
-              publishedAt
-              createdById
-              isHidden
-              status
-            }
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-          }
-        }`;
-        const queryResult = await fetch(`https://api.bettermode.com`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${btoa(process.env.CLIENT_ID! + ':' + process.env.CLIENT_SECRET!)}`
-          },
-          body: JSON.stringify({ query }),
+        const { posts: result }: PostsQueryResult = await gqlClient.request<PostsQueryResult, VariablesOf<typeof postsQuery>>(postsQuery, {
+          limit: currentLimit,
+          after: endCursor || undefined,
+          dateFilterValue: `"${dateFilterValue}"`
         });
-        const result = await queryResult.json() as PaginatedPost;
-        // const result = null;
-        console.log("queryResult", queryResult);
 
         requestCount++;
 
         if (result?.nodes) {
           const fetchedMetadata: PostDetails[] = result.nodes.map((node: Post) => ({
             id: node.id,
+            title: node.title,
             publishedAt: node.publishedAt,
             createdById: node.createdById,
             isHidden: node.isHidden,
+            isAnonymous: node.isAnonymous,
             status: node.status,
           }));
           posts.push(...fetchedMetadata);
@@ -334,56 +325,173 @@ export class BettermodeClient {
       throw error;
     }
   }
-  */
 
-  async assignBadgesToMember(networkId: string, memberId: MemberId, badges: BadgeId[]) {
+  async assignBadgeToMember(memberId: MemberId, badgeId: BadgeId) {
     try {
-      const client = await this.global.getTribeClient({ networkId });
-      // The generic type argument should match the function's signature: first is the operation name, second is the input type.
-      // const massActionResult = await client.mutation<
-      //   "createMassActionRequest"
-      // >({
-      //   name: "createMassActionRequest",
-      //   args: {
-      //     fields: {
-      //       action: MassActionRequestAction.AssignBadge, // RevokeBadge
-      //       context: MassActionRequestContext.Member,
-      //       extraProperties: {
-      //         badgeIds: badges,
-      //       },
-      //       filters: {
-      //         filterBy: [
-      //           {
-      //             key: "id",
-      //             operator: MemberListFilterByOperator.in,
-      //             value: `"${memberId}"`,
-      //           },
-      //         ]
-      //       }
-      //     }
-      //     },
-      //     variables: {
-      //       input: {},
-      //     },
-      //   });
+      const assignBadgeMutation = graphql(`
+        mutation (
+          $badgeId: String!,
+          $memberId: String!
+        ) {
+          assignBadge (
+            id: $badgeId,
+            input: {
+              memberId: $memberId
+            }
+          ) {
+            status
+          }
+        }
+      `);
+
+      const { assignBadge: { status } } = await gqlClient.request(assignBadgeMutation, {
+        badgeId,
+        memberId
+      });
+
+      if (status === ActionStatus.failed) {
+        throw new Error("Failed to assign badge to member");
+      } else {
+        this.logger.info("Status of assigning badge to member", { status, memberId, badgeId });
+      }
     }
     catch (error: unknown) {
-      this.logger.error("Error assigning badges to member", (error as Error)?.message || error);
+      this.logger.error("Error assigning badge to member", (error as Error)?.message || error);
       throw error;
     }
   }
 
-  async removeBadgesFromMember(networkId: string, memberId: MemberId, badges: BadgeId[]) {
+  async revokeBadgeFromMember(memberId: MemberId, badgeId: BadgeId) {
     try {
-      const client = await this.global.getTribeClient({ networkId });
-      // TODO: Implement this
-      // const result = await client.members.removeBadges({
-      //   memberId,
-      //   badges,
-      // });
+      const revokeBadgeMutation = graphql(`
+        mutation (
+          $badgeId: String!,
+          $memberId: String!
+        ) {
+          revokeBadge (
+            id: $badgeId,
+            input: {
+              memberId: $memberId
+            }
+          ) {
+            status
+          }
+        }
+      `);
+
+      const { revokeBadge: { status } } = await gqlClient.request(revokeBadgeMutation, {
+        badgeId,
+        memberId: memberId
+      });
+
+      if (status === ActionStatus.failed) {
+        throw new Error("Failed to revoke badge from member");
+      } else {
+        this.logger.info("Status of revoking badge from member", { status, memberId, badgeId });
+      }
     }
     catch (error: unknown) {
-      this.logger.error("Error removing badges from member", (error as Error)?.message || error);
+      this.logger.error("Error revoking badge from member", (error as Error)?.message || error);
+      throw error;
+    }
+  }
+
+  async assignBadgesToMembers(memberIds: MemberId[], badges: BadgeId[]) {
+    try {
+      const assignBadgesToMembersMutation = graphql(`
+        mutation assignBadgesToMembers (
+          $badgeIds: [ID!],
+          $memberIds: String!
+        ) {
+          createMassActionRequest(
+            input: {
+              action: AssignBadge,
+              context: Member,
+              extraProperties: {
+                badgeIds: $badgeIds
+              },
+              filters: {
+                filterBy: [
+                  {
+                    key: "id",
+                    operator: in,
+                    value: $memberIds
+                  }
+                ]
+              }
+            }
+          ) {
+            entitiesCount
+            failedCount
+            processedCount
+            status
+          }
+        }
+      `);
+
+      const massActionResult = await gqlClient.request(assignBadgesToMembersMutation, {
+        badgeIds: badges,
+        memberIds: JSON.stringify(memberIds)
+      });
+
+      if (massActionResult.createMassActionRequest.status === MassActionRequestStatus.Failed) {
+        throw new Error("Failed to assign badges to members");
+      } else {
+        this.logger.info("Status of assigning badges to members", { status: massActionResult.createMassActionRequest.status, memberIds, badges });
+      }
+    }
+    catch (error: unknown) {
+      this.logger.error("Error assigning badges to members", (error as Error)?.message || error);
+      throw error;
+    }
+  }
+
+  async revokeBadgesFromMembers(memberIds: MemberId[], badges: BadgeId[]) {
+    try {
+      const revokeBadgesFromMembersMutation = graphql(`
+        mutation revokeBadgesFromMembers (
+          $badgeIds: [ID!],
+          $memberIds: String!
+        ) {
+          createMassActionRequest(
+            input: {
+              action: RevokeBadge,
+              context: Member,
+              extraProperties: {
+                badgeIds: $badgeIds
+              },
+              filters: {
+                filterBy: [
+                  {
+                    key: "id",
+                    operator: in,
+                    value: $memberIds
+                  }
+                ]
+              }
+            }
+          ) {
+            entitiesCount
+            failedCount
+            processedCount
+            status
+          }
+        }
+      `);
+
+      const massActionResult = await gqlClient.request(revokeBadgesFromMembersMutation, {
+        badgeIds: badges,
+        memberIds: JSON.stringify(memberIds)
+      });
+
+      if (massActionResult.createMassActionRequest.status === MassActionRequestStatus.Failed) {
+        throw new Error("Failed to revoke badges from members");
+      } else {
+        this.logger.info("Status of revoking badges from members", { status: massActionResult.createMassActionRequest.status, memberIds, badges });
+      }
+    }
+    catch (error: unknown) {
+      this.logger.error("Error revoking badges from members", (error as Error)?.message || error);
       throw error;
     }
   }

@@ -17,6 +17,10 @@
                     className="bg-[<%= badge.backgroundColor %>] text-[<%= badge.textColor %>] border-0"
                   />
           <% }); %>
+          <% if (badges.length === 0) { %>
+            <Text id="no-badges-text-l1" value="No badges were found in the network" />
+            <Text id="no-badges-text-l2" value="Please create some badges in the community site and come back to configure them here." />
+          <% } %>
       </Card.Content>
     </Card>
     <% if (selectedBadge) { %>

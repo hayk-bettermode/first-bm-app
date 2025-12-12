@@ -65,8 +65,7 @@ export class InteractionService {
     const { networkId } = body;
 
     const badgeId = callbackId!.replace(InteractionCallbackIdEnum.SELECT_BADGE + "_", "");
-
-    this.appStateService.setSelectedBadge(networkId, badgeId);
+    this.badgeOrchestrationService.handleBadgeSelectedInSettings(networkId, badgeId);
 
     return {
       type: "INTERACTION",

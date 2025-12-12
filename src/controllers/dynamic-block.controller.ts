@@ -48,7 +48,18 @@ export class DynamicBlockController {
     try {
       const badges = this.appStateService.getAvailableBadges(networkId);
       const selectedBadgeId = this.appStateService.getSelectedBadge(networkId);
-      const selectedBadgeConfig = selectedBadgeId ? this.appStateService.getBadgeConfig(networkId, selectedBadgeId) : null;
+      const selectedBadgeConfig = selectedBadgeId
+        ? this.appStateService.getBadgeConfig(networkId, selectedBadgeId)
+        : null;
+
+      this.logger.info("Selected badge details", {
+        badegId: selectedBadgeId,
+        badgeConfig:selectedBadgeConfig
+      });
+
+      const condition = selectedBadgeConfig?.conditions?.[`condition-${selectedBadgeId}`];
+      const ifValue = condition?.if?.value;
+      const inValue = condition?.in?.value;
 
       // const slate = require("../slates/app-settings.json");
       const slate = convertXmlToSlateJson(
@@ -59,8 +70,8 @@ export class DynamicBlockController {
           postDaysWindowLimit: BADGE_CONDITION_LIMITS.POST_DAYS_WINDOW_LIMIT,
           badges: Object.values(badges),
           selectedBadge: selectedBadgeId ? badges[selectedBadgeId] : null,
-          ifValue: selectedBadgeConfig?.conditions?.[`condition-${selectedBadgeId}`]?.if?.value || 10,
-          inValue: selectedBadgeConfig?.conditions?.[`condition-${selectedBadgeId}`]?.in?.value || 31,
+          ifValue: typeof ifValue === 'undefined' ? "" : ifValue,
+          inValue: typeof inValue === 'undefined' ? "" : inValue,
         }
       );
 
