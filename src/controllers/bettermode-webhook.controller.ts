@@ -328,7 +328,7 @@ export class BettermodeWebhookController {
   private async handlePostChangesReceived(body: any): Promise<any> {
     try {
       const networkId = body.networkId;
-      this.logger.error(`Received ${body.data.name}`, {
+      this.logger.info(`Received ${body.data.name}`, {
         networkId: body.networkId,    
         postId: body.data.object.id,
         postTitle: body.data.object.title,

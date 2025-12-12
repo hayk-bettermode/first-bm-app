@@ -88,7 +88,7 @@ export class BadgeOrchestrationService {
       loaded: {
         badges: badges.length,
         posts: posts.length,
-        config: settings?.config?.length ?? 0
+        configs: Object.keys(settings?.config ?? {}).length
       }
     });
   }
@@ -241,7 +241,7 @@ export class BadgeOrchestrationService {
     // 3. Use the badge configs to INCREMENT/DECREMENT any affected badge buckets
     // 4. Use the affected badge buckets to calculate the final badges
     
-    // TODO: This is not performant, but calculating all badges for the demo app
+    // TODO: This is not performant, but calculating all badges for the DEMO app
     await this.calculateAndApplyBadges(networkId, { memberIds: [memberId] });
   }
 
@@ -259,7 +259,13 @@ export class BadgeOrchestrationService {
     this.logger.info("Badge config saved", { networkId, badgeConfig });
 
     // Update the badge config in the app state
-    this.appStateService.setBadgeConfig(networkId, badgeConfig);
+    const ifValue = badgeConfig.conditions[Object.keys(badgeConfig.conditions)[0]].if.value;
+    if (ifValue === 0) {
+      this.logger.info("Badge config IF value is 0, removing config", { networkId, badgeConfig });
+      this.appStateService.deleteBadgeConfig(networkId, badgeConfig.badgeId);
+    } else {
+      this.appStateService.setBadgeConfig(networkId, badgeConfig);
+    }
 
     // Persist badge config
     const bettermodeClient = new BettermodeClient(networkId);
@@ -393,6 +399,7 @@ export class BadgeOrchestrationService {
     const posts = this.appStateService.getPosts(networkId);
     const oldMembers: Members = this.appStateService.getMembers(networkId);
     const currentTimeMs = new Date().getTime();
+    const millisecondsPerDay = 86400000;
 
     /*
     {
@@ -428,12 +435,16 @@ export class BadgeOrchestrationService {
       members = _omit(oldMembers, filters.memberIds);
     }
 
+    let postIndex = 1;
     posts.forEach((post) => {
-      // If a post is not visible, it does not count towards any badges   
-      const isPostVisible = post.isHidden !== true && post.status === "PUBLISHED";
-      if (!isPostVisible) {
-        return;
-      }
+      const diff = currentTimeMs - new Date(String(post.publishedAt)).getTime();
+      const publishedDaysAgo = diff / millisecondsPerDay;
+      const isPostCounted = post.isHidden === false && post.status === "PUBLISHED";
+      console.log(`\x1b[34m${postIndex}. POST -> ${post.title}\x1b[0m`, {
+        publishedDaysAgo,
+        isPostCounted
+      });
+      postIndex++;
 
       // Filter by memberId
       // If a memberId filter is provided, the triggering change is only relevant to that member.
@@ -442,8 +453,6 @@ export class BadgeOrchestrationService {
       // if (filters.memberIds && !filters.memberIds.includes(memberId)) {
       //   return;
       // }
-
-      const publishedAtMs = new Date(String(post.publishedAt)).getTime();
 
       if (!_has(members, memberId)) {
         members[memberId] = {
@@ -454,6 +463,11 @@ export class BadgeOrchestrationService {
           ],
           badges: [],
         };
+      }
+
+      // If a post is not visible, it does not count towards any badges
+      if (!isPostCounted) {
+        return;
       }
 
       Object.keys(appConfig).forEach((badgeId: BadgeId) => {
@@ -497,14 +511,29 @@ export class BadgeOrchestrationService {
         // Now let's check if the post meets the conditions
         Object.keys(badgeConfig.conditions).forEach((conditionId) => {
           const condition = badgeConfig.conditions[conditionId];
-          const isWithinTheTimeWindow = currentTimeMs - publishedAtMs < condition.in.value * 24 * 60 * 60 * 1000;
+          const isWithinTheTimeWindow = publishedDaysAgo < condition.in.value;
+
+          console.log(">> condition check 1", {
+            conditionId,
+            badgeName: this.appStateService.getAvailableBadge(networkId, badgeId)?.name,
+            isWithinTheTimeWindow
+          });
 
           if (isWithinTheTimeWindow) {
-            const currentValue = memberBadgeBucket.conditions[conditionId] =
-                (memberBadgeBucket.conditions?.[conditionId] || 0) + 1;
+            memberBadgeBucket.conditions[conditionId] =
+              (memberBadgeBucket.conditions?.[conditionId] ?? 0) + 1;
 
             // Check if the count condition is met
-            const isConditionMet = currentValue >= condition.if.value;
+            const isConditionMet = memberBadgeBucket.conditions?.[conditionId] >= condition.if.value;
+
+            console.log(">> condition check 2", {
+              conditionId,
+              badgeName: this.appStateService.getAvailableBadge(networkId, badgeId)?.name,
+              calculatedValue: memberBadgeBucket.conditions[conditionId],
+              expectedValue: condition.if.value,
+              isConditionMet
+            });
+
             if (isConditionMet) {
               members[memberId].buckets[badgeId].metConditions.push(conditionId);
               members[memberId].badges.push(badgeId);
