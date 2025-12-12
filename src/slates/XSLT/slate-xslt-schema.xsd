@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified">
+
+    <!-- =========================================================
+         XSLT 2.0 Namespace Support
+         Elements from http://www.w3.org/1999/XSL/Transform are allowed
+         via xs:any with processContents="lax". This enables:
+         - xsl:for-each, xsl:if, xsl:choose/when/otherwise
+         - xsl:value-of, xsl:variable, xsl:param, xsl:attribute
+         - XPath 2.0 expressions: if/then/else, concat(), not(), etc.
+         - AVT (Attribute Value Templates): {$var}, {expression}
+         ========================================================= -->
+
+    <!-- =========================================================
+         AVT (Attribute Value Template) compatible types
+         These accept both literal values and XPath expressions like {$var}
+         ========================================================= -->
+    <xs:simpleType name="avtString">
+        <xs:annotation>
+            <xs:documentation>String that may contain AVT expressions like {$variable} or {xpath/expression}</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="avtBoolean">
+        <xs:annotation>
+            <xs:documentation>Boolean or AVT expression that evaluates to boolean (e.g., "true", "false", "{$var}", "{condition}")</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="avtInteger">
+        <xs:annotation>
+            <xs:documentation>Integer or AVT expression that evaluates to integer (e.g., "10", "{$count}", "{position()}")</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="xpathExpression">
+        <xs:annotation>
+            <xs:documentation>XPath 2.0 expression (supports if/then/else, concat(), not(), boolean coercion, etc.)</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string"/>
+    </xs:simpleType>
+
+    <!-- =========================================================
+         Common props (available on all components)
+         Now using AVT-compatible types for dynamic values
+         ========================================================= -->
+    <xs:attributeGroup name="commonProps">
+        <xs:attribute name="id" type="avtString" use="required"/>
+        <xs:attribute name="className" type="avtString" use="optional"/>
+        <xs:attribute name="name" type="avtString" use="optional"/>
+        <xs:attribute name="callbackId" type="avtString" use="optional"/>
+    </xs:attributeGroup>
+
+    <!-- =========================================================
+         Group of all block elements (for nesting in layout elements)
+         Now includes XSLT control flow elements via xs:any
+         ========================================================= -->
+    <xs:group name="blockElements">
+        <xs:choice>
+            <!-- XSLT Control Flow Elements (xsl:for-each, xsl:if, xsl:choose, etc.) -->
+            <xs:any namespace="http://www.w3.org/1999/XSL/Transform"
+                    processContents="lax"/>
+            <!-- Slate Components -->
+            <xs:element ref="Accordion"/>
+            <xs:element ref="Alert"/>
+            <xs:element ref="Button"/>
+            <xs:element ref="CallToAction"/>
+            <xs:element ref="Card"/>
+            <xs:element ref="Card.Header"/>
+            <xs:element ref="Card.Content"/>
+            <xs:element ref="Card.Footer"/>
+            <xs:element ref="Container"/>
+            <xs:element ref="Divider"/>
+            <xs:element ref="Form"/>
+            <xs:element ref="Icon"/>
+            <xs:element ref="Iframe"/>
+            <xs:element ref="Image"/>
+            <xs:element ref="Input"/>
+            <xs:element ref="Link"/>
+            <xs:element ref="Markdown"/>
+            <xs:element ref="RichText"/>
+            <xs:element ref="Select"/>
+            <xs:element ref="Text"/>
+            <xs:element ref="Textarea"/>
+            <xs:element ref="Toggle"/>
+        </xs:choice>
+    </xs:group>
+
+    <!-- =========================================================
+         Root element (optional, but useful)
+         ========================================================= -->
+    <!-- <xs:element name="Slate">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:group ref="blockElements" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+        < ! - - Ensure all id attributes are unique across the entire Slate - - >
+        <xs:unique name="uniqueBlockId">
+            <xs:selector xpath=".//*"/>
+            <xs:field xpath="@id"/>
+        </xs:unique>
+    </xs:element> -->
+
+    <!-- =========================================================
+         Accordion
+         ========================================================= -->
+    <xs:element name="Accordion">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- items array: <Item title="" description="" defaultOpen="true"/> or XSLT elements -->
+                <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element name="Item">
+                        <xs:complexType>
+                            <xs:attribute name="title" type="avtString" use="optional"/>
+                            <xs:attribute name="description" type="avtString" use="optional"/>
+                            <xs:attribute name="defaultOpen" type="avtBoolean" use="optional"/>
+                            <xs:attributeGroup ref="commonProps"/>
+                        </xs:complexType>
+                    </xs:element>
+                    <xs:any namespace="http://www.w3.org/1999/XSL/Transform" processContents="lax"/>
+                </xs:choice>
+            </xs:sequence>
+            <xs:attribute name="title" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Alert
+         ========================================================= -->
+    <xs:element name="Alert">
+        <xs:complexType>
+            <xs:attribute name="status" type="avtString" use="optional"/>
+            <xs:attribute name="align" type="avtString" use="optional"/>
+            <xs:attribute name="title" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Button
+         ========================================================= -->
+    <xs:element name="Button">
+        <xs:complexType>
+            <xs:sequence minOccurs="0" maxOccurs="1">
+                <!-- Optional nested text content or XSLT elements -->
+                <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element ref="Text"/>
+                    <xs:any namespace="http://www.w3.org/1999/XSL/Transform" processContents="lax"/>
+                </xs:choice>
+            </xs:sequence>
+            <xs:attribute name="variant" type="avtString" use="optional"/>
+            <xs:attribute name="size" type="avtString" use="optional"/>
+            <xs:attribute name="fullWidth" type="avtBoolean" use="optional"/>
+            <xs:attribute name="rounded" type="avtBoolean" use="optional"/>
+            <xs:attribute name="disabled" type="avtBoolean" use="optional"/>
+            <xs:attribute name="loading" type="avtBoolean" use="optional"/>
+            <xs:attribute name="autoDisabled" type="avtBoolean" use="optional"/>
+            <xs:attribute name="autoLoading" type="avtBoolean" use="optional"/>
+            <xs:attribute name="text" type="avtString" use="optional"/>
+            <xs:attribute name="leadingIcon" type="avtString" use="optional"/>
+            <xs:attribute name="trailingIcon" type="avtString" use="optional"/>
+            <xs:attribute name="type" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         CallToAction
+         ========================================================= -->
+    <xs:element name="CallToAction">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- action array: <Action .../> or XSLT elements -->
+                <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element name="Action">
+                        <xs:complexType>
+                            <xs:attribute name="type" type="avtString" use="optional"/>
+                            <xs:attribute name="text" type="avtString" use="optional"/>
+                            <xs:attribute name="href" type="avtString" use="optional"/>
+                            <xs:attribute name="openInNewWindow" type="avtBoolean" use="optional"/>
+                            <xs:attributeGroup ref="commonProps"/>
+                        </xs:complexType>
+                    </xs:element>
+                    <xs:any namespace="http://www.w3.org/1999/XSL/Transform" processContents="lax"/>
+                </xs:choice>
+            </xs:sequence>
+            <xs:attribute name="alignment" type="avtString" use="optional"/>
+            <xs:attribute name="title" type="avtString" use="optional"/>
+            <xs:attribute name="image" type="avtString" use="optional"/>
+            <xs:attribute name="description" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Card + Card.Header / Card.Content / Card.Footer
+         ========================================================= -->
+    <xs:element name="Card">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element ref="Card.Header"/>
+                    <xs:element ref="Card.Content"/>
+                    <xs:element ref="Card.Footer"/>
+                    <xs:any namespace="http://www.w3.org/1999/XSL/Transform" processContents="lax"/>
+                </xs:choice>
+            </xs:sequence>
+            <xs:attribute name="alignment" type="avtString" use="optional"/>
+            <xs:attribute name="padding" type="avtString" use="optional"/>
+            <xs:attribute name="attached" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Card.Header">
+        <xs:complexType>
+            <xs:sequence minOccurs="0">
+                <!-- Could contain nested blocks, if desired -->
+                <xs:group ref="blockElements" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="title" type="avtString" use="optional"/>
+            <xs:attribute name="description" type="avtString" use="optional"/>
+            <xs:attribute name="size" type="avtString" use="optional"/>
+            <xs:attribute name="withBorder" type="avtBoolean" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Card.Content">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- Layout element, must have children -->
+                <xs:group ref="blockElements" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Card.Footer">
+        <xs:complexType>
+            <xs:sequence minOccurs="0">
+                <!-- Optional children -->
+                <xs:group ref="blockElements" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="withBorder" type="avtBoolean" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Container
+         ========================================================= -->
+    <xs:element name="Container">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:group ref="blockElements" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="size" type="avtString" use="optional"/>
+            <xs:attribute name="padding" type="avtString" use="optional"/>
+            <xs:attribute name="direction" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Divider
+         ========================================================= -->
+    <xs:element name="Divider">
+        <xs:complexType>
+            <xs:attribute name="padding" type="avtString" use="optional"/>
+            <xs:attribute name="position" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Form
+         ========================================================= -->
+    <xs:element name="Form">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- Form fields as children -->
+                <xs:group ref="blockElements" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="defaultValues" type="avtString" use="optional"/>
+            <!-- callbackId is in commonProps -->
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Icon (does not use commonProps to avoid 'name' conflict)
+         ========================================================= -->
+    <xs:element name="Icon">
+        <xs:complexType>
+            <xs:attribute name="id" type="avtString" use="required"/>
+            <xs:attribute name="className" type="avtString" use="optional"/>
+            <xs:attribute name="name" type="avtString" use="optional"/>
+            <xs:attribute name="size" type="avtString" use="optional"/>
+            <xs:attribute name="iconType" type="avtString" use="optional"/>
+            <xs:attribute name="color" type="avtString" use="optional"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Iframe
+         ========================================================= -->
+    <xs:element name="Iframe">
+        <xs:complexType>
+            <xs:attribute name="src" type="avtString" use="optional"/>
+            <xs:attribute name="height" type="avtInteger" use="optional"/>
+            <xs:attribute name="title" type="avtString" use="optional"/>
+            <xs:attribute name="hidden" type="avtBoolean" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Image
+         ========================================================= -->
+    <xs:element name="Image">
+        <xs:complexType>
+            <xs:attribute name="url" type="avtString" use="optional"/>
+            <xs:attribute name="size" type="avtString" use="optional"/>
+            <xs:attribute name="shape" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Input
+         ========================================================= -->
+    <xs:element name="Input">
+        <xs:complexType>
+            <xs:attribute name="readOnly" type="avtBoolean" use="optional"/>
+            <xs:attribute name="hideValue" type="avtBoolean" use="optional"/>
+            <xs:attribute name="value" type="avtString" use="optional"/>
+            <xs:attribute name="copy" type="avtBoolean" use="optional"/>
+            <xs:attribute name="required" type="avtBoolean" use="optional"/>
+            <xs:attribute name="invalid" type="avtBoolean" use="optional"/>
+            <xs:attribute name="hidden" type="avtBoolean" use="optional"/>
+            <xs:attribute name="disabled" type="avtBoolean" use="optional"/>
+            <xs:attribute name="label" type="avtString" use="optional"/>
+            <xs:attribute name="placeholder" type="avtString" use="optional"/>
+            <xs:attribute name="helperText" type="avtString" use="optional"/>
+            <xs:attribute name="error" type="avtString" use="optional"/>
+            <xs:attribute name="leadingIcon" type="avtString" use="optional"/>
+            <xs:attribute name="type" type="avtString" use="optional"/>
+            <xs:attribute name="min" type="avtInteger" use="optional"/>
+            <xs:attribute name="max" type="avtInteger" use="optional"/>
+            <xs:attribute name="pattern" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Link
+         ========================================================= -->
+    <xs:element name="Link">
+        <xs:complexType>
+            <xs:sequence minOccurs="0">
+                <!-- Optional text child or XSLT elements -->
+                <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element ref="Text"/>
+                    <xs:any namespace="http://www.w3.org/1999/XSL/Transform" processContents="lax"/>
+                </xs:choice>
+            </xs:sequence>
+            <xs:attribute name="href" type="avtString" use="optional"/>
+            <xs:attribute name="external" type="avtBoolean" use="optional"/>
+            <xs:attribute name="variant" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Markdown
+         ========================================================= -->
+    <xs:element name="Markdown">
+        <xs:complexType>
+            <xs:attribute name="text" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         RichText
+         ========================================================= -->
+    <xs:element name="RichText">
+        <xs:complexType>
+            <xs:attribute name="content" type="avtString" use="optional"/>
+            <xs:attribute name="hidden" type="avtBoolean" use="optional"/>
+            <xs:attribute name="textColor" type="avtString" use="optional"/>
+            <xs:attribute name="backgroundColor" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Select
+         ========================================================= -->
+    <xs:element name="Select">
+        <xs:complexType>
+            <xs:attribute name="isSearchable" type="avtBoolean" use="optional"/>
+            <xs:attribute name="dataCallbackId" type="avtString" use="optional"/>
+            <xs:attribute name="hideClearIcon" type="avtBoolean" use="optional"/>
+            <xs:attribute name="avatarRounded" type="avtString" use="optional"/>
+            <xs:attribute name="avatarSize" type="avtString" use="optional"/>
+            <!-- callbackId/name via commonProps -->
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Text
+         ========================================================= -->
+    <xs:element name="Text">
+        <xs:complexType>
+            <xs:attribute name="value" type="avtString" use="optional"/>
+            <xs:attribute name="align" type="avtString" use="optional"/>
+            <xs:attribute name="size" type="avtString" use="optional"/>
+            <xs:attribute name="truncate" type="avtBoolean" use="optional"/>
+            <xs:attribute name="format" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Textarea
+         ========================================================= -->
+    <xs:element name="Textarea">
+        <xs:complexType>
+            <xs:attribute name="value" type="avtString" use="optional"/>
+            <xs:attribute name="required" type="avtBoolean" use="optional"/>
+            <xs:attribute name="invalid" type="avtBoolean" use="optional"/>
+            <xs:attribute name="label" type="avtString" use="optional"/>
+            <xs:attribute name="placeholder" type="avtString" use="optional"/>
+            <xs:attribute name="helperText" type="avtString" use="optional"/>
+            <xs:attribute name="hidden" type="avtBoolean" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- =========================================================
+         Toggle
+         ========================================================= -->
+    <xs:element name="Toggle">
+        <xs:complexType>
+            <xs:attribute name="title" type="avtString" use="optional"/>
+            <xs:attribute name="description" type="avtString" use="optional"/>
+            <xs:attribute name="checked" type="avtBoolean" use="optional"/>
+            <xs:attribute name="size" type="avtString" use="optional"/>
+            <xs:attribute name="required" type="avtBoolean" use="optional"/>
+            <xs:attribute name="invalid" type="avtBoolean" use="optional"/>
+            <xs:attribute name="label" type="avtString" use="optional"/>
+            <xs:attribute name="placeholder" type="avtString" use="optional"/>
+            <xs:attributeGroup ref="commonProps"/>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
